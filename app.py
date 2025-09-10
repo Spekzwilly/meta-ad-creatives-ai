@@ -1,6 +1,7 @@
 import os
 import io
 import json
+import re
 from typing import Optional
 
 import streamlit as st
@@ -14,6 +15,116 @@ from src.services.workflow_service import WorkflowService
 load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+
+def clean_product_text(text: str) -> str:
+    """Clean HTML tags and format product text for better display."""
+    if not text:
+        return text
+    
+    # Remove HTML tags
+    text = re.sub(r'<[^>]+>', '', text)
+    
+    # Replace common HTML entities
+    text = text.replace('&nbsp;', ' ')
+    text = text.replace('&amp;', '&')
+    text = text.replace('&lt;', '<')
+    text = text.replace('&gt;', '>')
+    text = text.replace('&quot;', '"')
+    text = text.replace('&#39;', "'")
+    
+    # Clean up extra whitespace
+    text = re.sub(r'\s+', ' ', text)  # Replace multiple spaces with single space
+    text = text.strip()
+    
+    return text
+
+def render_table_with_markdown(table_dict: dict) -> None:
+    """Render table dictionary as HTML table with Markdown formatting support."""
+    html = "<table style='width:100%; border-collapse: collapse;'>"
+    
+    # Add header
+    html += "<thead><tr>"
+    for col in table_dict["headers"]:
+        html += f"<th style='border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;'>{col}</th>"
+    html += "</tr></thead>"
+    
+    # Add rows
+    html += "<tbody>"
+    for row in table_dict["data"]:
+        html += "<tr>"
+        for cell in row:
+            # Convert markdown to HTML
+            cell_html = str(cell)
+            # Convert **bold** to <strong>bold</strong>
+            cell_html = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', cell_html)
+            # Convert *italic* to <em>italic</em>
+            cell_html = re.sub(r'\*(.*?)\*', r'<em>\1</em>', cell_html)
+            # <br> tags are already HTML
+            html += f"<td style='border: 1px solid #ddd; padding: 8px; vertical-align: top;'>{cell_html}</td>"
+        html += "</tr>"
+    html += "</tbody></table>"
+    
+    st.markdown(html, unsafe_allow_html=True)
+
+def parse_markdown_table(text: str) -> Optional[dict]:
+    """Parse markdown table from text and return as pandas DataFrame."""
+    if not text:
+        return None
+    
+    # Look for markdown table patterns
+    lines = text.strip().split('\n')
+    table_lines = []
+    in_table = False
+    
+    for line in lines:
+        # Check if line looks like a table row (contains |)
+        if '|' in line:
+            # Clean up the line
+            clean_line = line.strip()
+            if clean_line.startswith('|') and clean_line.endswith('|'):
+                table_lines.append(clean_line)
+                in_table = True
+            elif clean_line.count('|') >= 2:  # At least 2 pipes for a valid row
+                table_lines.append(clean_line)
+                in_table = True
+        elif in_table and line.strip() == '':
+            # Empty line might end the table
+            break
+        elif in_table and not line.strip().startswith('-'):
+            # If we were in a table and hit a non-table line (not separator), break
+            break
+    
+    if len(table_lines) < 2:  # Need at least header and one data row
+        return None
+    
+    try:
+        # Parse the table
+        data = []
+        headers = None
+        
+        for i, line in enumerate(table_lines):
+            # Skip separator lines (containing only -, |, :, and spaces)
+            if re.match(r'^[\s\|\-\:]+$', line):
+                continue
+                
+            # Split by | and clean up
+            cells = [cell.strip() for cell in line.split('|')]
+            # Remove empty cells at start/end (from leading/trailing |)
+            cells = [cell for cell in cells if cell]
+            
+            if headers is None:
+                headers = cells
+            else:
+                if len(cells) == len(headers):
+                    data.append(cells)
+        
+        if headers and data:
+            return {"headers": headers, "data": data}
+    
+    except Exception:
+        pass  # If parsing fails, return None
+    
+    return None
 
 def initialize_workflow_state():
     """Initialize workflow state in session."""
@@ -78,11 +189,57 @@ def render_product_input():
     if st.session_state.workflow_state.product_metadata:
         metadata = st.session_state.workflow_state.product_metadata
         with st.expander("📋 已提取的產品資料", expanded=True):
-            st.write(f"**標題:** {metadata.title}")
-            st.write(f"**描述:** {metadata.description[:200]}...")
-            st.write(f"**價格:** {metadata.price}")
+            # Add CSS for better text wrapping
+            st.markdown("""
+                <style>
+                .product-metadata {
+                    word-wrap: break-word;
+                    word-break: break-word;
+                    overflow-wrap: break-word;
+                    white-space: pre-wrap;
+                    max-width: 100%;
+                }
+                .product-text {
+                    word-wrap: break-word;
+                    word-break: break-word;
+                    overflow-wrap: break-word;
+                    white-space: normal;
+                    max-width: 100%;
+                    line-height: 1.4;
+                }
+                </style>
+            """, unsafe_allow_html=True)
+            
+            # Clean and display title
+            clean_title = clean_product_text(metadata.title)
+            st.markdown(f'<div class="product-text"><strong>標題:</strong> {clean_title}</div>', unsafe_allow_html=True)
+            
+            # Clean and display description with proper text wrapping
+            clean_description = clean_product_text(metadata.description)
+            if len(clean_description) > 200:
+                short_desc = clean_description[:200] + "..."
+                st.markdown(f'<div class="product-text"><strong>描述:</strong> {short_desc}</div>', unsafe_allow_html=True)
+                with st.expander("顯示完整描述", expanded=False):
+                    st.markdown(f'<div class="product-text">{clean_description}</div>', unsafe_allow_html=True)
+            else:
+                st.markdown(f'<div class="product-text"><strong>描述:</strong> {clean_description}</div>', unsafe_allow_html=True)
+            
+            # Clean and display price
+            clean_price = clean_product_text(metadata.price) if metadata.price else "未提供"
+            st.markdown(f'<div class="product-text"><strong>價格:</strong> {clean_price}</div>', unsafe_allow_html=True)
+            
+            # Clean and display USPs
             if metadata.usps:
-                st.write(f"**特色:** {', '.join(metadata.usps[:3])}")
+                clean_usps = [clean_product_text(usp) for usp in metadata.usps if usp.strip()]
+                if clean_usps:
+                    usps_text = ', '.join(clean_usps[:3])
+                    st.markdown(f'<div class="product-text"><strong>特色:</strong> {usps_text}</div>', unsafe_allow_html=True)
+                    if len(clean_usps) > 3:
+                        with st.expander("顯示所有特色", expanded=False):
+                            for i, usp in enumerate(clean_usps, 1):
+                                st.markdown(f'<div class="product-text">{i}. {usp}</div>', unsafe_allow_html=True)
+            
+            # Display image
             if metadata.image_url:
                 st.image(metadata.image_url, caption="產品圖片", width=300)
 
@@ -174,21 +331,30 @@ def render_stage_2():
     
     # Display result
     if hasattr(st.session_state.workflow_state, 'audience_targeting') and st.session_state.workflow_state.audience_targeting:
-        with st.expander("🎯 受眾分析結果", expanded=True):
+        st.subheader("🎯 受眾分析結果")
+        
+        # Try to parse as table first
+        table_data = parse_markdown_table(st.session_state.workflow_state.audience_targeting)
+        
+        if table_data is not None:
+            # Display as HTML table with Markdown formatting
+            render_table_with_markdown(table_data)
+        else:
+            # Fallback to markdown display
             st.markdown(st.session_state.workflow_state.audience_targeting)
-            
-            # Edit button
-            if st.button("✏️ 編輯受眾分析"):
-                edited_audience = st.text_area(
-                    "編輯受眾分析",
-                    value=st.session_state.workflow_state.audience_targeting,
-                    height=300,
-                    key="edit_audience"
-                )
-                if st.button("💾 保存編輯", key="save_audience"):
-                    st.session_state.workflow_state.audience_targeting = edited_audience
-                    st.success("✅ 已保存編輯")
-                    st.rerun()
+        
+        # Collapsible edit panel
+        with st.expander("✏️ 編輯受眾分析", expanded=False):
+            edited_audience = st.text_area(
+                "編輯內容",
+                value=st.session_state.workflow_state.audience_targeting,
+                height=300,
+                key="edit_audience"
+            )
+            if st.button("💾 保存編輯", key="save_audience"):
+                st.session_state.workflow_state.audience_targeting = edited_audience
+                st.success("✅ 已保存編輯")
+                st.rerun()
 
 def render_stage_3():
     """Render Stage 3: Ad Copy Generation."""
@@ -224,21 +390,30 @@ def render_stage_3():
     
     # Display result
     if hasattr(st.session_state.workflow_state, 'ad_copy_generation') and st.session_state.workflow_state.ad_copy_generation:
-        with st.expander("📝 廣告文案結果", expanded=True):
+        st.subheader("📝 廣告文案結果")
+        
+        # Try to parse as table first
+        table_data = parse_markdown_table(st.session_state.workflow_state.ad_copy_generation)
+        
+        if table_data is not None:
+            # Display as HTML table with Markdown formatting
+            render_table_with_markdown(table_data)
+        else:
+            # Fallback to markdown display
             st.markdown(st.session_state.workflow_state.ad_copy_generation)
-            
-            # Edit button
-            if st.button("✏️ 編輯廣告文案"):
-                edited_copy = st.text_area(
-                    "編輯廣告文案",
-                    value=st.session_state.workflow_state.ad_copy_generation,
-                    height=300,
-                    key="edit_copy"
-                )
-                if st.button("💾 保存編輯", key="save_copy"):
-                    st.session_state.workflow_state.ad_copy_generation = edited_copy
-                    st.success("✅ 已保存編輯")
-                    st.rerun()
+        
+        # Collapsible edit panel
+        with st.expander("✏️ 編輯廣告文案", expanded=False):
+            edited_copy = st.text_area(
+                "編輯內容",
+                value=st.session_state.workflow_state.ad_copy_generation,
+                height=300,
+                key="edit_copy"
+            )
+            if st.button("💾 保存編輯", key="save_copy"):
+                st.session_state.workflow_state.ad_copy_generation = edited_copy
+                st.success("✅ 已保存編輯")
+                st.rerun()
 
 def render_stage_4():
     """Render Stage 4: Creative Generation."""
@@ -256,71 +431,53 @@ def render_stage_4():
     )
     st.session_state.workflow_state.stage4_prompt = prompt
     
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        if st.button("🎨 生成創意概念", use_container_width=True):
-            try:
-                api_key = st.session_state.get("api_key", GEMINI_API_KEY)
-                workflow_service = WorkflowService(api_key)
-                
-                with st.spinner("正在生成創意概念..."):
-                    result = workflow_service.generate_creative_concepts(
-                        st.session_state.workflow_state.strategy_report,
-                        st.session_state.workflow_state.audience_targeting,
-                        st.session_state.workflow_state.ad_copy_generation,
-                        prompt
-                    )
-                    st.session_state.workflow_state.ad_creative_generation = result
-                st.success("✅ 創意概念完成！")
-            except Exception as e:
-                st.error(f"生成失敗: {e}")
-    
-    with col2:
-        if st.button("🖼️ 生成創意圖片", use_container_width=True):
-            if hasattr(st.session_state.workflow_state, 'ad_creative_generation') and st.session_state.workflow_state.ad_creative_generation:
-                try:
-                    api_key = st.session_state.get("api_key", GEMINI_API_KEY)
-                    workflow_service = WorkflowService(api_key)
+    if st.button("🎨 生成廣告創意", use_container_width=True):
+        try:
+            api_key = st.session_state.get("api_key", GEMINI_API_KEY)
+            workflow_service = WorkflowService(api_key)
+            
+            # Generate creative concepts with images in one step
+            with st.spinner("正在生成創意概念與圖片..."):
+                result = workflow_service.generate_creative_concepts_with_images(
+                    st.session_state.workflow_state.strategy_report,
+                    st.session_state.workflow_state.audience_targeting,
+                    st.session_state.workflow_state.ad_copy_generation,
+                    prompt,
+                    st.session_state.workflow_state.product_metadata.image_url
+                )
+                st.session_state.workflow_state.ad_creative_generation = result
+                st.success("✅ 廣告創意完成！")
                     
-                    # Use the creative concepts as image generation prompt
-                    image_prompt = f"基於以下創意概念，生成1000x1000的Meta廣告創意圖片：\n\n{st.session_state.workflow_state.ad_creative_generation}"
-                    
-                    with st.spinner("正在生成創意圖片..."):
-                        result_img = workflow_service.generate_image_from_prompt(
-                            st.session_state.workflow_state.product_metadata.image_url,
-                            image_prompt
-                        )
-                        if result_img:
-                            st.session_state.generated_image = result_img
-                            st.success("✅ 創意圖片完成！")
-                        else:
-                            st.warning("圖片生成失敗")
-                except Exception as e:
-                    st.error(f"圖片生成失敗: {e}")
-            else:
-                st.warning("請先生成創意概念")
+        except Exception as e:
+            st.error(f"生成失敗: {e}")
     
     # Display creative concepts
     if hasattr(st.session_state.workflow_state, 'ad_creative_generation') and st.session_state.workflow_state.ad_creative_generation:
-        with st.expander("🎨 創意概念結果", expanded=True):
-            st.markdown(st.session_state.workflow_state.ad_creative_generation)
-    
-    # Display generated image
-    if "generated_image" in st.session_state and st.session_state.generated_image:
-        st.subheader("🖼️ 生成的創意圖片")
-        st.image(st.session_state.generated_image, caption="Generated Creative", use_container_width=True)
+        st.subheader("🎨 創意概念結果")
         
-        # Download button
-        buf = io.BytesIO()
-        st.session_state.generated_image.save(buf, format="PNG")
-        st.download_button(
-            label="📥 下載 PNG",
-            data=buf.getvalue(),
-            file_name="meta_ad_creative.png",
-            mime="image/png",
-            use_container_width=True
-        )
+        # Try to parse as table first
+        table_data = parse_markdown_table(st.session_state.workflow_state.ad_creative_generation)
+        
+        if table_data is not None:
+            # Display as HTML table with Markdown formatting
+            render_table_with_markdown(table_data)
+        else:
+            # Fallback to markdown display
+            st.markdown(st.session_state.workflow_state.ad_creative_generation, unsafe_allow_html=True)
+        
+        # Collapsible edit panel
+        with st.expander("✏️ 編輯創意概念", expanded=False):
+            edited_creative = st.text_area(
+                "編輯內容",
+                value=st.session_state.workflow_state.ad_creative_generation,
+                height=300,
+                key="edit_creative"
+            )
+            if st.button("💾 保存編輯", key="save_creative"):
+                st.session_state.workflow_state.ad_creative_generation = edited_creative
+                st.success("✅ 已保存編輯")
+                st.rerun()
+    
 
 def app():
     st.set_page_config(

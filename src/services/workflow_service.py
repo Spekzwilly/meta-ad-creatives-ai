@@ -11,6 +11,7 @@ from src.models.workflow import (
     WorkflowState
 )
 from src.utils.product_extractor import ProductMetadataExtractor
+from src.services.image_generation_service import ImageGenerationService
 import logging
 
 logger = logging.getLogger(__name__)
@@ -22,8 +23,8 @@ class WorkflowService:
     def __init__(self, api_key: str):
         genai.configure(api_key=api_key)
         self.text_model = genai.GenerativeModel("gemini-1.5-pro")
-        self.image_model = genai.GenerativeModel("gemini-2.5-flash-image-preview")
         self.extractor = ProductMetadataExtractor()
+        self.image_service = ImageGenerationService(api_key)
     
     def extract_product_metadata(self, url: str) -> ProductMetadata:
         """Stage 0: Extract product metadata from URL."""
@@ -76,27 +77,69 @@ class WorkflowService:
     
     def generate_image_from_prompt(self, image_url: Optional[str], prompt: str):
         """Generate image from prompt using Gemini vision model."""
+        return self.image_service.generate_image_from_prompt(image_url, prompt)
+    
+    def generate_creative_concepts_with_images(self, strategy_report_text: str, audience_targeting_text: str, 
+                                             ad_copy_text: str, custom_prompt: str, 
+                                             product_image_url: str) -> str:
+        """Stage 4: Generate creative concepts with actual images in table format."""
+        # Step 1: Generate JSON concepts
+        prompt = custom_prompt.format(
+            strategy_report=strategy_report_text,
+            audience_targeting=audience_targeting_text,
+            ad_copy_generation=ad_copy_text
+        )
+        response = self.text_model.generate_content(prompt)
+        stage4_json_str = response.text
+        
+        # Step 2: Parse JSON and generate images
+        table_rows = []
         try:
-            from PIL import Image
-            import requests
-            from io import BytesIO
+            # Clean JSON string
+            if stage4_json_str.strip().startswith("```json"):
+                stage4_json_str = stage4_json_str.strip()[7:-4]
+            elif stage4_json_str.strip().startswith("```"):
+                stage4_json_str = stage4_json_str.strip()[3:-3]
             
-            parts = []
-            if image_url:
-                resp = requests.get(image_url)
-                resp.raise_for_status()
-                parts.append(Image.open(BytesIO(resp.content)))
-            parts.append(prompt)
+            creative_concepts = json.loads(stage4_json_str)
             
-            response = self.image_model.generate_content(parts, stream=False)
-            
-            for part in response.parts:
-                if hasattr(part, "inline_data") and part.inline_data:
-                    return Image.open(BytesIO(part.inline_data.data))
-            return None
+            for i, concept in enumerate(creative_concepts):
+                # Generate image for this concept
+                image_output_data = self.image_service.generate_creative_image(
+                    product_image_url, 
+                    concept['image_prompt_en']
+                )
+                
+                table_rows.append({
+                    "audience": concept['target_audience_zh'],
+                    "description": concept['image_prompt_en'],
+                    "image_output": image_output_data
+                })
+                
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse JSON: {e}")
+            return f"| Audience Group | Creative Description | Generated Image |\n|---|---|---|\n| Error | JSON Parse Error: {str(e)} | N/A |"
         except Exception as e:
-            logger.error(f"Image generation failed: {e}")
-            return None
+            logger.error(f"Unexpected error: {e}")
+            return f"| Audience Group | Creative Description | Generated Image |\n|---|---|---|\n| Error | {str(e)} | N/A |"
+        
+        # Step 3: Generate HTML table
+        markdown_table = "| Audience Group | Creative Description | Generated Image |\n"
+        markdown_table += "|---|---|---|\n"
+        
+        for row in table_rows:
+            image_md = ""
+            # Check if the output is a long string (likely base64) vs. a short error message
+            if len(row['image_output']) > 100:
+                # Use data URI with base64 to embed the image
+                image_md = f"<img src='data:image/png;base64,{row['image_output']}' width='300'>"
+            else:
+                image_md = row['image_output']  # This will be the error message
+
+            description_cleaned = row['description'].replace('|', '\\|')
+            markdown_table += f"| {row['audience']} | {description_cleaned} | {image_md} |\n"
+        
+        return markdown_table
     
     def parse_audience_segments(self, audience_text: str) -> List[AudienceSegment]:
         """Parse audience targeting text into structured segments."""
