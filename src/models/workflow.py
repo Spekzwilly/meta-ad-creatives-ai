@@ -94,66 +94,159 @@ class WorkflowState(BaseModel):
     ad_creative_generation: Optional[AdCreativeGeneration] = None
     
     # Prompts for each stage (user can modify these)
-    stage1_prompt: str = """請根據以下產品資料，為台灣市場製作深度產品分析報告：
+    stage1_prompt: str = """
+    Role: You are a senior Meta ads specialist, well-versed in Taiwan’s e-commerce industry, and will assist clients in developing advertising strategies for specific products or product groups.
+    Context:
+    Before launching ads, it’s essential to understand the product’s features and selling points. Based on the following product information, please conduct a preliminary analysis of product highlights and market research, then produce an advertising strategy report.
 
-**分析重點：**
-1. **USP分析**：識別產品的核心競爭優勢
-2. **市場研究**：分析台灣市場現況與競爭環境
-3. **消費者洞察**：台灣消費者對此類產品的偏好與行為
-4. **定位建議**：最適合的市場定位策略
-5. **關鍵訊息主題**：3-5個核心溝通主題
+    **Product Information:**
+    {product_info}
+    Task:
+    Based on the product information, write a product analysis, market analysis, and strategic report for the client.
 
-**產品資料：**
-{product_info}
+    Output:
+    **Analysis Focus:**
+    1. **USP Analysis:** Identify the product’s core competitive advantages.
+    2. **Market Research:** Analyze the product’s current status and competitive landscape in Taiwan.
+    3. **Consumer Insights:** Explore Taiwanese consumer preferences and behaviors regarding this product category.
+    4. **Positioning Recommendations:** Suggest the most suitable market positioning strategy.
+    5. **Key Messaging Themes:** Provide 3-5 core communication themes.
 
-請以專業行銷分析師的角度，提供可執行的策略建議。"""
+    Please provide actionable strategic recommendations from the perspective of a professional marketing analyst.
+    Note: Always write in traditional Chinese.
 
-    stage2_prompt: str = """基於前階段的策略報告，請為此產品設計3-5個精準的受眾區隔：
+    Reference:
+    # Stage 1 Example Reference: 智慧貓砂盆 (Smart Cat Litter Box)
 
-**每個受眾區隔需包含：**
-1. **受眾名稱**：簡潔明確的命名
-2. **人口統計**：年齡、性別、收入、教育程度等
-3. **興趣與行為**：興趣愛好、消費行為、線上行為
-4. **痛點與動機**：主要困擾與購買動機
-5. **Meta投放建議**：具體的Facebook/Instagram定向設定
+    This document provides a detailed example of the output for Stage 1 of the AI-Powered Advertising Workflow, using the hypothetical product "智慧貓砂盆" (Smart Cat Litter Box) for the Taiwan market.
+    
+    ---
+    
+    ### **Product Information (Example)**
+    
+    *   **Product Name:** 智慧貓砂盆 (Smart Cat Litter Box)
+    *   **Product Description:** 一款專為台灣家庭設計的智慧貓砂盆，具備自動清潔、除臭、健康監測功能。透過專屬APP，貓奴可隨時掌握主子如廁情況，適用於狹小居住空間，解決傳統貓砂盆的清潔困擾與異味問題。
+    *   **Product Metadata:**
+        *   **Price:** NT$4,500
+        *   **Features:** 自動鏟砂 (Automatic Scooping), 負離子除臭 (Anion Deodorization), APP健康監測 (APP Health Monitoring - weight, frequency, duration), 適用多種貓砂 (Compatible with multiple litter types), 低噪音運作 (Low-noise operation), 簡約設計 (Minimalist Design)
+        *   **Dimensions:** 50cm x 50cm x 55cm
+        *   **Target Audience:** 居住在台灣都會區的年輕貓飼主，重視生活品質與寵物健康。
+    
+    ---
+    
+    ### **1. Metadata Analysis**
+    
+    Based on the product information, the following key themes, keywords, and emotional triggers are identified for the Taiwan market:
+    
+    *   **Keywords (Traditional Chinese):** 智慧貓砂盆, 自動貓砂盆, 貓砂盆除臭, 貓健康監測, 貓奴, 主子, 鏟屎官, 智能養貓, 寵物科技, 公寓養貓.
+    *   **Core Themes:**
+        *   **Convenience & Time-Saving:** The "自動" (automatic) aspect is a major draw for busy Taiwanese urbanites. It frees them from the daily chore of scooping litter ("鏟屎").
+        *   **Health & Wellness:** The "健康監測" (health monitoring) feature taps into the deep emotional connection Taiwanese owners have with their pets, whom they often refer to as "主子" (master). It transforms a simple litter box into a proactive health tool.
+        *   **Odor Control & Cleanliness:** "除臭" (deodorization) is a critical selling point in Taiwan's humid climate and smaller living spaces (apartments/"公寓"). A clean, odor-free home is highly valued.
+        *   **Smart Technology & Modern Lifestyle:** The product positions itself as part of a "智能" (smart) and modern lifestyle, appealing to tech-savvy younger generations.
+    *   **Emotional Triggers:**
+        *   **Love & Care for Pets:** The desire to provide the best for their "主子" (master cat).
+        *   **Relief from a Chore:** The liberation from the unpleasant task of cleaning the litter box.
+        *   **Peace of Mind:** Knowing their cat's health is being monitored and their home is clean.
+        *   **Sense of Modernity:** Owning a piece of smart pet technology that enhances their lifestyle.
+    
+    ### **2. Unique Selling Points (USPs) Generation**
+    
+    Based on the metadata analysis, the following 4 USPs are formulated for the Taiwan market:
+    
+    1.  **專為台灣貓奴設計的全方位健康管家 (A Comprehensive Health Butler Designed for Taiwanese Cat Lovers):** This USP goes beyond "health monitoring." It frames the product as a dedicated "管家" (butler), a term that resonates with service-oriented values. It combines the APP monitoring of weight, frequency, and duration into a single, powerful benefit: proactive health management for their beloved "主子".
+    
+    2.  **告別異味，小空間也能極致清新 (Say Goodbye to Odors, Ultimate Freshness Even in Small Spaces):** This USP directly addresses the pain point of living in smaller urban apartments, a common situation in Taiwan. It highlights the anion deodorization technology and promises an "極致清新" (ultimate freshness), which is a highly desirable state in a humid climate.
+    
+    3.  **解放雙手，每日自動鏟屎的終極自由 (Free Your Hands, The Ultimate Freedom of Automatic Daily Scooping):** This USP uses the colloquial term "鏟屎" (scooping poop) to create a relatable and humorous connection with the target audience. It emphasizes the core benefit of convenience and frames it as "終極自由" (ultimate freedom), a powerful emotional promise for busy professionals.
+    
+    4.  **簡約美學，完美融入你的居家風格 (Minimalist Aesthetics, Perfectly Blends into Your Home Style):** Taiwanese consumers, particularly the younger demographic, have a growing appreciation for minimalist design and home aesthetics (e.g., Muji-style). This USP positions the product not just as a utility item, but as a stylish addition to their home, justifying its premium price point.
+    
+    ### **3. Market Research (Taiwan)**
+    
+    *   **Market Size & Trends:** The pet care market in Taiwan is booming, with a significant increase in the "pet humanization" trend. Owners are willing to spend more on premium and tech-integrated products for their pets. The smart pet product category, especially for cats, is a high-growth segment.
+    *   **Consumer Behavior:** Taiwanese cat owners are highly engaged online, frequently participating in Facebook groups (e.g., "貓咪也瘋狂俱樂部") and following pet-related influencers on Instagram. They rely heavily on online reviews, unboxing videos (開箱文), and word-of-mouth recommendations before making a purchase, especially for higher-priced items. They value products that offer tangible benefits in convenience, health, and cleanliness.
+    *   **Competitive Landscape:**
+        *   **Key Competitors:** Brands like Petkit, Catlink, and other imported smart litter boxes are present in the market, often sold through e-commerce platforms like PChome, Momo, and Shopee.
+        *   **Positioning:** Competitors often focus on the technology itself. Our opportunity is to position our product with a stronger emotional connection and a focus on benefits tailored to the *Taiwanese* lifestyle (small spaces, humidity, local colloquialisms).
+    *   **Cultural Considerations:** The terms "貓奴" (cat slave), "主子" (master), and "鏟屎官" (scooper officer) are terms of endearment and are widely used. Incorporating this language creates an instant cultural connection and shows that the brand understands the local cat owner community.
+    
+    ### **4. Business Strategy Report for Meta Ads (Taiwan)**
+    
+    *   **Strategic Approach:** The campaign will focus on a benefit-driven narrative rather than a feature-driven one. We will use a combination of emotional storytelling and problem-solution content to justify the premium price and drive sales conversions. The strategy is to build trust through relatable content and highlight the product as an essential upgrade for modern cat owners in Taiwan.
+    *   **Key Messaging Pillars:**
+        1.  **The Gift of Health:** Frame the purchase as an investment in the cat's long-term health and the owner's peace of mind.
+        2.  **The Luxury of Time:** Position the product as a time-saving device that gives owners more quality time to spend with their cats, rather than on chores.
+        3.  **A Cleaner, Happier Home:** Emphasize the benefit of a fresh, odor-free living environment for both the owner and the cat.
+    *   **Competitive Positioning:** While competitors sell a "smart litter box," we are selling "a better life for you and your cat in Taiwan." We will differentiate by using hyper-localized copy and creative that reflects the specific living conditions and cultural nuances of our target audience.
+    *   **Sales Funnel Strategy (Meta):**
+        *   **Top of Funnel (Awareness):** Use video ads showcasing the problem (messy, smelly litter boxes) and the solution (our product in a clean, stylish home). Focus on broad interests like "cats," "pet lovers," and followers of major pet-related pages in Taiwan.
+        *   **Middle of Funnel (Consideration):** Retarget video viewers and page engagers with carousel ads that detail the key USPs (Health Butler, Odor Control, Freedom). Use testimonials and user-generated content style creative.
+        *   **Bottom of Funnel (Conversion):** Retarget website visitors and "add to cart" abandoners with direct response ads featuring a clear Call to Action ("立即購買") and potentially a limited-time offer to create urgency. The primary text will be short, direct, and focused on the final conversion.
+"""
 
-**策略報告：**
-{strategy_report}
+    stage2_prompt: str = """
+    Role: You are a senior Meta ads specialist, well-versed in Taiwan’s e-commerce industry, and will assist clients in identifying targeting audience groups for specific products or product colletions.
+    Contex: We've already had a strategy report for the specified product/collections. see: {strategy_report}
+    Task: 基於前階段的策略報告，請為此產品設計3-5個精準的受眾區隔
+    Output:
+        **每個受眾區隔需包含：**
+        1. **受眾名稱**：簡潔明確的命名
+        2. **人口統計 (Demographic)**：年齡、性別、收入、教育程度等
+        3. **興趣與行為**：興趣愛好、消費行為、線上行為
+        4. **痛點與動機**：主要困擾與購買動機
+        5. **Meta投放建議**：具體的Facebook/Instagram定向設定
+        請確保每個受眾區隔有明確差異化(MECE)，以台灣市場為主，並適合 Meta 廣告平台投放。
+        Note: Always write in traditional Chinese.
+        Note: Show the result in table format.
+    Reference:
+        
 
-請確保每個受眾區隔有明確差異化，並適合Meta廣告平台投放。"""
+"""
 
-    stage3_prompt: str = """基於受眾分析，為每個受眾區隔客製化廣告文案：
+    stage3_prompt: str = """
+        Role: You are a senior Meta ads specialist, well-versed in Taiwan’s e-commerce industry, and will assist clients in generating ad copy for targeting audience groups for specific products or product colletions.
+        Context: We've already had a "audience breakdown report" for the specified product/collectinos. "audience breakdown report": {audience_targeting}
+        Task: Generate ad copy for each targeting audience group based on the "audience breakdown report"
+        Output: 
+            **文案規格要求：**
+            - **標題**：3個版本，最多40字繁體中文，吸睛且強調效益
+            - **主要文案A**：125-150字繁體中文，完整傳達價值主張
+            - **主要文案B**：80-100字繁體中文，精簡有力版本
+            - **描述文字**：2個版本，最多30字繁體中文，補強主訊息
+            - **行動呼籲**：選擇最適合的CTA（立即購買、了解更多、立即訂購、馬上搶購、查看商品）
+            - **受眾對應策略**：說明如何針對特定受眾設計
+            請確保文案符合Meta廣告規範且針對台灣消費者優化。
+            Note: Always write in traditional Chinese.
+            Note: Show the result in table format.
+        Reference:
+            
+        """
 
-**文案規格要求：**
-- **標題**：3個版本，最多40字繁體中文，吸睛且強調效益
-- **主要文案A**：125-150字繁體中文，完整傳達價值主張
-- **主要文案B**：80-100字繁體中文，精簡有力版本
-- **描述文字**：2個版本，最多30字繁體中文，補強主訊息
-- **行動呼籲**：選擇最適合的CTA（立即購買、了解更多、立即訂購、馬上搶購、查看商品）
-- **受眾對應策略**：說明如何針對特定受眾設計
-
-**受眾分析：**
-{audience_targeting}
-
-請確保文案符合Meta廣告規範且針對台灣消費者優化。"""
-
-    stage4_prompt: str = """基於前三階段資料，設計3-5個1000x1000靜態廣告創意變體：
+    stage4_prompt: str = """
+    Role: You are a senior Meta ads agency, well-versed in Taiwan’s e-commerce industry, and will assist clients in generating ad creatives for targeting audience groups for specific products or product colletions.
+    基於前三階段資料，設計 3-5 個1000x1000靜態廣告創意變體：
 
 **每個創意變體需包含：**
-1. **創意概念名稱**：描述性命名
-2. **目標受眾**：對應第二階段的特定受眾
-3. **視覺概念**：主體、構圖、場景、道具的詳細描述
-4. **風格指南**：藝術風格、色彩搭配、情緒調性、文字整合
-5. **訊息強化**：如何視覺化核心訊息
-6. **台灣市場考量**：文化元素與在地化視覺線索
-7. **圖像生成提示詞**：完整的AI圖像生成指令
+    1. **創意概念名稱**：描述性命名
+    2. **目標受眾**：對應第二階段的特定受眾
+    3. **視覺概念**：主體、構圖、場景、道具的詳細描述
+    4. **風格指南**：藝術風格、色彩搭配、情緒調性、文字整合
+    5. **訊息強化**：如何視覺化核心訊息
+    6. **台灣市場考量**：文化元素與在地化視覺線索
+    7. **圖像生成提示詞**：完整的AI圖像生成指令
 
 **完整專案資料：**
 策略報告：{strategy_report}
 受眾分析：{audience_targeting}
 廣告文案：{ad_copy_generation}
 
-請設計能引起台灣消費者共鳴且符合Meta廣告最佳實踐的創意。"""
+請設計能引起台灣消費者共鳴且符合Meta廣告最佳實踐的創意。
+Final output should be a table. the columns in the table should contain:
+- audience name
+- ad creative description
+- ad creative image
+"""
     
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
