@@ -239,28 +239,26 @@ class WorkflowState(BaseModel):
         """
 
     stage4_prompt: str = """
-    Role: You are a senior Meta ads agency, well-versed in Taiwan’s e-commerce industry, and will assist clients in generating ad creatives for targeting audience groups for specific products or product colletions.
-    基於前三階段資料，設計 3-5 個1000x1000靜態廣告創意變體：
+你是一位精通台灣電商市場的 ads creative agency ，了解台灣電商市場常見的廣告格式以及元素。
+根據以下受眾輪廓與廣告文案，請為每個受眾產生 2-3 個靜態廣告創意構想。
 
-**每個創意變體需包含：**
-    1. **創意概念名稱**：描述性命名
-    2. **目標受眾**：對應第二階段的特定受眾
-    3. **視覺概念**：主體、構圖、場景、道具的詳細描述
-    4. **風格指南**：藝術風格、色彩搭配、情緒調性、文字整合
-    5. **訊息強化**：如何視覺化核心訊息
-    6. **台灣市場考量**：文化元素與在地化視覺線索
-    7. **圖像生成提示詞**：完整的AI圖像生成指令
+受眾輪廓：
+{audience_targeting}
 
-**完整專案資料：**
-策略報告：{strategy_report}
-受眾分析：{audience_targeting}
-廣告文案：{ad_copy_generation}
+廣告文案：
+{ad_copy_generation}
 
-請設計能引起台灣消費者共鳴且符合Meta廣告最佳實踐的創意。
-Final output should be a table. the columns in the table should contain:
-- audience name
-- ad creative description
-- ad creative image
+策略報告：
+{strategy_report}
+
+Your instructions are to act as an expert art director. For each concept, provide a concise but detailed image prompt that will be given to an AI model. The AI will be given the original product image, and your prompt will guide it on how to *edit* or *recontextualize* that product image into a new scene.
+
+請將結果以一個 JSON 陣列格式回傳，陣列中的每個物件都代表一個創意構想，並包含以下欄位：
+- "concept_name_zh": (string) 概念名稱 (繁體中文)
+- "target_audience_zh": (string) 目標受眾 (繁體中文)
+- "image_prompt_en": (string) 可直接用於圖像生成模型的詳細英文 prompt (專為台灣市場設計，廣告圖上需要有 hooks ，也就是吸引人的廣告文案以及 CTA)
+
+**重要**: 請僅輸出一個格式正確的 JSON 陣列，不要包含任何額外的文字或 markdown 格式（例如 ```json ... ```）。
 """
     
     created_at: datetime = Field(default_factory=datetime.now)
