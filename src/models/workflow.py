@@ -210,12 +210,12 @@ class WorkflowState(BaseModel):
         Task: Generate ad copy for each targeting audience group based on the "audience breakdown report"
         Output: 
             **文案規格要求：**
-            - **標題**：3個版本，最多40字繁體中文，吸睛且強調效益
-            - **主要文案A**：125-150字繁體中文，完整傳達價值主張
-            - **主要文案B**：80-100字繁體中文，精簡有力版本
-            - **描述文字**：2個版本，最多30字繁體中文，補強主訊息
-            - **行動呼籲**：選擇最適合的CTA（立即購買、了解更多、立即訂購、馬上搶購、查看商品）
-            - **受眾對應策略**：說明如何針對特定受眾設計
+            - **Audience Group** (受眾族群)
+            - **Primary Text** (主要廣告文案)
+            - **Headline** (廣告口號：顯示在創意素材下方的短句，請提供 3 個選項)
+            - **CTA Text** (行動呼籲按鈕文字)
+            - **Angle Used** (採用切角)
+            - **Link between Angle and Motivation** (切角與動機連結)
             請確保文案符合Meta廣告規範且針對台灣消費者優化。
             Note: Always write in traditional Chinese.
             Note: Show the result in table format.
