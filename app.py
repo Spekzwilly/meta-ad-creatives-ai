@@ -243,59 +243,75 @@ def render_product_input():
             if metadata.image_url:
                 st.image(metadata.image_url, caption="產品圖片", width=300)
 
+@st.dialog("編輯提示詞", width="large")
+def prompt_editor_dialog(stage_key: str, label: str):
+    current = getattr(st.session_state.workflow_state, stage_key)
+    new_prompt = st.text_area(label, value=current, height=450)
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("💾 儲存", use_container_width=True, type="primary"):
+            setattr(st.session_state.workflow_state, stage_key, new_prompt)
+            st.rerun()
+    with col2:
+        if st.button("取消", use_container_width=True):
+            st.rerun()
+
+
+@st.dialog("編輯內容", width="large")
+def result_editor_dialog(state_key: str, label: str):
+    current = getattr(st.session_state.workflow_state, state_key)
+    edited = st.text_area(label, value=current, height=450)
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("💾 儲存", use_container_width=True, type="primary"):
+            setattr(st.session_state.workflow_state, state_key, edited)
+            st.rerun()
+    with col2:
+        if st.button("取消", use_container_width=True):
+            st.rerun()
+
+
 def render_stage_1():
     """Render Stage 1: Product Analysis."""
     st.subheader("🎯 階段 1: 產品策略分析")
-    
+
     if not st.session_state.workflow_state.product_metadata:
         st.warning("請先提取產品資料")
         return
-    
-    # Editable prompt
-    prompt = st.text_area(
-        "分析提示詞 (可編輯)",
-        value=st.session_state.workflow_state.stage1_prompt,
-        height=200
-    )
-    st.session_state.workflow_state.stage1_prompt = prompt
-    
+
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.caption(f"提示詞: {st.session_state.workflow_state.stage1_prompt[:80]}…")
+    with col2:
+        if st.button("✏️ 編輯提示詞", key="edit_prompt_1", use_container_width=True):
+            prompt_editor_dialog("stage1_prompt", "階段 1 分析提示詞")
+
     if st.button("🚀 生成策略分析", use_container_width=True):
         if not st.session_state.get("api_key") and not GEMINI_API_KEY:
             st.error("請先輸入 API Key")
             return
-        
+
         try:
             api_key = st.session_state.get("api_key", GEMINI_API_KEY)
             workflow_service = WorkflowService(api_key)
-            
+
             with st.spinner("正在生成策略分析..."):
                 result = workflow_service.generate_strategy_report(
                     st.session_state.workflow_state.product_metadata,
-                    prompt
+                    st.session_state.workflow_state.stage1_prompt
                 )
                 st.session_state.workflow_state.strategy_report = result
                 st.session_state.workflow_state.current_stage = max(2, st.session_state.workflow_state.current_stage)
             st.success("✅ 策略分析完成！")
         except Exception as e:
             st.error(f"生成失敗: {e}")
-    
+
     # Display result
     if hasattr(st.session_state.workflow_state, 'strategy_report') and st.session_state.workflow_state.strategy_report:
         with st.expander("📊 策略分析結果", expanded=True):
             st.markdown(st.session_state.workflow_state.strategy_report)
-            
-            # Edit button
-            if st.button("✏️ 編輯策略分析"):
-                edited_report = st.text_area(
-                    "編輯策略分析",
-                    value=st.session_state.workflow_state.strategy_report,
-                    height=300,
-                    key="edit_strategy"
-                )
-                if st.button("💾 保存編輯", key="save_strategy"):
-                    st.session_state.workflow_state.strategy_report = edited_report
-                    st.success("✅ 已保存編輯")
-                    st.rerun()
+            if st.button("✏️ 編輯結果", key="edit_result_1"):
+                result_editor_dialog("strategy_report", "策略分析結果")
 
 def render_stage_2():
     """Render Stage 2: Audience Targeting."""
